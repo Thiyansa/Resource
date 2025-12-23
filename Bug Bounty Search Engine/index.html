@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Bounty Search Engine</title>
+    <style>
+		/* ==================================================
+		   ROOT VARIABLES (CUSTOMIZE HERE ONLY)
+		================================================== */
+		:root {
+			--bg-main: radial-gradient(circle at top, #0b122f, #020617);
+			--glass-bg: rgba(255, 255, 255, 0.05);
+			--glass-border: rgba(255, 255, 255, 0.08);
+
+			--primary: #22d3ee;
+			--secondary: #3b82f6;
+			--text-main: #e5e7eb;
+			--text-muted: #94a3b8;
+
+			--radius-lg: 22px;
+			--radius-md: 16px;
+			--radius-sm: 10px;
+
+			--blur: 12px;
+			--transition: 0.3s ease;
+		}
+
+		/* ==================================================
+		   RESET & BASE
+		================================================== */
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		html {
+			font-size: clamp(14px, 1vw, 16px);
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background: var(--bg-main);
+			min-height: 100vh;
+			color: var(--text-main);
+			padding: clamp(12px, 3vw, 24px);
+		}
+
+		.container {
+			max-width: 1400px;
+			margin: auto;
+		}
+
+		/* ==================================================
+		   HEADER
+		================================================== */
+		header {
+			text-align: center;
+			padding: clamp(28px, 4vw, 44px);
+			margin-bottom: clamp(30px, 4vw, 45px);
+			background: var(--glass-bg);
+			border-radius: var(--radius-lg);
+			backdrop-filter: blur(var(--blur));
+			border: 1px solid var(--glass-border);
+		}
+
+		header h1 {
+			font-size: clamp(1.8rem, 4vw, 2.6rem);
+			font-weight: 700;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 14px;
+			background: linear-gradient(90deg, var(--primary), var(--secondary));
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+
+		.subtitle {
+			margin-top: 10px;
+			font-size: clamp(0.9rem, 1.5vw, 1rem);
+			color: var(--text-muted);
+		}
+
+		/* ==================================================
+		   STATS
+		================================================== */
+		.stats {
+			margin-top: 30px;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+			gap: 20px;
+		}
+
+		.stat {
+			background: rgba(255, 255, 255, 0.06);
+			padding: 22px;
+			border-radius: var(--radius-md);
+			text-align: center;
+			backdrop-filter: blur(10px);
+			border: 1px solid var(--glass-border);
+			transition: var(--transition);
+		}
+
+		.stat:hover {
+			transform: translateY(-4px);
+			border-color: rgba(34, 211, 238, 0.4);
+			box-shadow: 0 10px 30px rgba(34, 211, 238, 0.15);
+		}
+
+		.stat i {
+			font-size: 1.6rem;
+			color: var(--primary);
+			margin-bottom: 8px;
+		}
+
+		.stat-number {
+			font-size: 1.9rem;
+			font-weight: 700;
+		}
+
+		.stat-label {
+			font-size: 0.85rem;
+			color: var(--text-muted);
+		}
+
+		/* ==================================================
+		   SEARCH SECTION
+		================================================== */
+		.search-section {
+			background: var(--glass-bg);
+			border-radius: var(--radius-md);
+			padding: clamp(20px, 3vw, 32px);
+			margin-bottom: 30px;
+			backdrop-filter: blur(var(--blur));
+			border: 1px solid var(--glass-border);
+		}
+
+		.search-input-group {
+			display: flex;
+			gap: 15px;
+			flex-wrap: wrap;
+			align-items: center;
+			position: relative;
+		}
+
+		label {
+			font-size: 1rem;
+			font-weight: 500;
+		}
+
+		#target {
+			flex: 1;
+			min-width: min(100%, 280px);
+			padding: 15px 20px;
+			padding-right: 56px;
+			font-size: 15px;
+			border-radius: var(--radius-sm);
+			background: rgba(2, 6, 23, 0.65);
+			border: 2px solid rgba(34, 211, 238, 0.3);
+			color: #fff;
+			transition: var(--transition);
+		}
+
+		#target::placeholder {
+			color: #64748b;
+		}
+
+		#target:focus {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25);
+		}
+
+		/* Copy Button */
+		.copy-btn {
+			position: absolute;
+			right: 12px;
+			top: 50%;
+			transform: translateY(-50%);
+			background: #0f172a;
+			color: #e2e8f0;
+			border: 1px solid #334155;
+			padding: 10px 14px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			border: 1px solid rgba(34, 211, 238, 0.4);
+			color: var(--primary);
+			padding: 8px 12px;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: var(--transition);
+		}
+
+		.copy-btn:hover {
+			background: #1e293b;
+			color: #38bdf8;
+			transform: translateY(-50%) scale(1.1);
+		}
+
+		/* ==================================================
+		   CATEGORIES
+		================================================== */
+		.categories {
+			display: grid;
+			gap: 25px;
+		}
+
+		.category {
+			background: rgba(255, 255, 255, 0.04);
+			border-radius: var(--radius-md);
+			padding: 25px;
+			border: 1px solid rgba(255, 255, 255, 0.07);
+			transition: var(--transition);
+		}
+
+		.category:hover {
+			border-color: rgba(34, 211, 238, 0.4);
+			transform: translateY(-3px);
+		}
+
+		.category-title {
+			font-size: 1.25rem;
+			font-weight: 600;
+			color: var(--primary);
+			margin-bottom: 18px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		/* ==================================================
+		   BUTTON GRID
+		================================================== */
+		.button-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+			gap: 12px;
+		}
+
+		.search-btn {
+			padding: 14px 18px;
+			font-size: 14px;
+			background: linear-gradient(
+				135deg,
+				rgba(34, 211, 238, 0.12),
+				rgba(59, 130, 246, 0.12)
+			);
+			border: 1px solid rgba(34, 211, 238, 0.35);
+			color: var(--text-main);
+			border-radius: var(--radius-sm);
+			cursor: pointer;
+			transition: var(--transition);
+			text-align: left;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.search-btn::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(
+				90deg,
+				transparent,
+				rgba(34, 211, 238, 0.25),
+				transparent
+			);
+			transform: translateX(-100%);
+			transition: 0.5s;
+		}
+
+		.search-btn:hover::before {
+			transform: translateX(100%);
+		}
+
+		.search-btn:hover {
+			border-color: var(--primary);
+			transform: translateX(6px);
+			box-shadow: 0 8px 25px rgba(34, 211, 238, 0.2);
+		}
+
+		/* ==================================================
+		   QUICK ACTIONS
+		================================================== */
+		.quick-actions {
+			margin-top: 15px;
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		.quick-btn {
+			padding: 8px 16px;
+			font-size: 12px;
+			border-radius: 999px;
+			background: rgba(34, 211, 238, 0.15);
+			border: 1px solid rgba(34, 211, 238, 0.3);
+			color: var(--text-main);
+			cursor: pointer;
+			transition: var(--transition);
+		}
+
+		.quick-btn:hover {
+			background: rgba(34, 211, 238, 0.3);
+		}
+
+		/* =========================
+		   FOOTER (ENHANCED)
+		========================= */
+		.footer {
+			margin-top: 60px;
+			padding: 35px 25px;
+			text-align: center;
+			background: rgba(255, 255, 255, 0.04);
+			border-radius: var(--radius-md);
+			border: 1px solid rgba(255, 255, 255, 0.07);
+			backdrop-filter: blur(var(--blur));
+		}
+
+		.footer-note {
+			font-size: 0.9rem;
+			color: #64748b;
+		}
+
+		.footer-update {
+			margin-top: 10px;
+			font-size: 0.8rem;
+			color: var(--text-muted);
+		}
+
+		.footer-divider {
+			width: 80px;
+			height: 2px;
+			background: linear-gradient(90deg, transparent, var(--primary), transparent);
+			margin: 20px auto;
+			border-radius: 999px;
+		}
+
+		.footer-credit {
+			font-size: 0.8rem;
+			color: #94a3b8;
+		}
+
+		.footer-credit span {
+			color: var(--primary);
+			font-weight: 600;
+		}
+
+		.footer-credit a {
+			color: var(--secondary);
+			text-decoration: none;
+			font-weight: 500;
+			transition: var(--transition);
+		}
+
+		.footer-credit a:hover {
+			color: var(--primary);
+			text-decoration: underline;
+		}
+
+		/* Mobile fine-tune */
+		@media (max-width: 480px) {
+			.footer {
+				padding: 25px 18px;
+			}
+		}
+
+		.dev-link {
+			color: var(--primary);
+			font-weight: 600;
+			text-decoration: none;
+			transition: var(--transition);
+		}
+
+		.dev-link:hover {
+			color: var(--secondary);
+			text-decoration: underline;
+		}
+
+			</style>
+	<!-- Font Awesome CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+</head>
+<body>
+    <div class="container">
+
+
+<header class="header">
+    <h1>
+        <i class="fa-solid fa-bug"></i>
+        Bug Bounty Search Engine
+    </h1>
+
+    <p class="subtitle">
+        Advanced reconnaissance toolkit for security researchers
+    </p>
+
+    <div class="stats">
+        <div class="stat">
+            <i class="fa-solid fa-magnifying-glass-chart"></i>
+            <div class="stat-number">300</div>
+            <div class="stat-label">Search Queries</div>
+        </div>
+
+        <div class="stat">
+            <i class="fa-solid fa-layer-group"></i>
+            <div class="stat-number">11+</div>
+            <div class="stat-label">Platforms</div>
+        </div>
+    </div>
+</header>
+
+
+        <div class="search-section">
+            <div class="search-input-group">
+                <label for="target">Target Domain:</label>
+                <div style="position: relative; flex: 1; min-width: 300px;">
+                    <input type="text" id="target" placeholder="example.com">
+                   <!--  <button class="copy-btn" id="copyBtn">📋</button> -->
+<button class="copy-btn" id="copyBtn">
+    <i class="fa-solid fa-clipboard"></i>
+</button>
+
+			
+                </div>
+            </div>
+            
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="quickSearch('google.com')">google.com</button>
+                <button class="quick-btn" onclick="quickSearch('github.com')">github.com</button>
+                <button class="quick-btn" onclick="quickSearch('microsoft.com')">microsoft.com</button>
+                <button class="quick-btn" onclick="quickSearch('facebook.com')">facebook.com</button>
+                <button class="quick-btn" onclick="clearTarget()">Clear</button>
+            </div>
+            
+            <div style="text-align: center; color: #64748b; font-size: 0.85em; margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                💡 <strong>Tip:</strong> Enter target domain and click any search button below
+            </div>
+        </div>
+
+        <div class="categories">
+            <!-- NEW Bug Bounty & Security Programs Category -->
+            <div class="category">
+                <h2 class="category-title">🔐 Bug Bounty & Security Programs</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(65)">Bug Bounty Program Pages</button>
+                    <button class="search-btn" onclick="googleSearch(66)">Security.txt Files</button>
+                    <button class="search-btn" onclick="googleSearch(67)">Vulnerability Disclosure</button>
+                    <button class="search-btn" onclick="googleSearch(68)">Responsible Disclosure</button>
+                    <button class="search-btn" onclick="googleSearch(69)">Bug Bounty External Search</button>
+                    <button class="search-btn" onclick="googleSearch(70)">HackerOne Profile Search</button>
+                    <button class="search-btn" onclick="googleSearch(71)">Bugcrowd Profile Search</button>
+                    <button class="search-btn" onclick="runAllBugBountySearches()">Run All Bug Bounty Searches</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">File & Directory Discovery</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(1)">Directory Listing Vulnerabilities</button>
+                    <button class="search-btn" onclick="googleSearch(2)">Exposed Configuration Files</button>
+                    <button class="search-btn" onclick="googleSearch(3)">Exposed Database Files</button>
+                    <button class="search-btn" onclick="googleSearch(4)">Exposed Log Files</button>
+                    <button class="search-btn" onclick="googleSearch(5)">Backup & Old Files</button>
+                    <button class="search-btn" onclick="googleSearch(8)">Publicly Exposed Documents</button>
+                    <button class="search-btn" onclick="googleSearch(46)">Sensitive conf.php Files</button>
+                    <button class="search-btn" onclick="googleSearch(56)">download.php Files</button>
+                    <button class="search-btn" onclick="googleSearch(60)">users.yml / admin.yml / config.yml</button>
+                    <button class="search-btn" onclick="googleSearch(63)">Index of /etc</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">WordPress & CMS</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(10)">Find WordPress Sites</button>
+                    <button class="search-btn" onclick="googleSearch(20)">Find WordPress #2</button>
+                    <button class="search-btn" onclick="googleSearch(33)">WP Config Backup</button>
+                    <button class="search-btn" onclick="googleSearch(40)">wp-content Juicy Info</button>
+                    <button class="search-btn" onclick="googleSearch(43)">WordPress Juicy File 1</button>
+                    <button class="search-btn" onclick="googleSearch(45)">Vulnerable WP Plugin (Contact Form 7)</button>
+                    <button class="search-btn" onclick="googleSearch(50)">WordPress Juicy File 2</button>
+                    <button class="search-btn" onclick="googleSearch(54)">WordPress Juicy File 3</button>
+                    <button class="search-btn" onclick="googleSearch(58)">WordPress Backup Files</button>
+                    <button class="search-btn" onclick="googleSearch(51)">Drupal Login Pages</button>
+                    <button class="search-btn" onclick="googleSearch(52)">Joomla Database Path</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Database & SQL</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(7)">SQL Error Messages</button>
+                    <button class="search-btn" onclick="googleSearch(53)">SQL Query Files</button>
+                    <button class="search-btn" onclick="googleSearch(59)">MySQL Configuration Files</button>
+                    <button class="search-btn" onclick="googleSearch(64)">SQL Directories & Databases</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Authentication & Admin</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(6)">Login Pages</button>
+                    <button class="search-btn" onclick="googleSearch(42)">Admin Portal (admin.aspx)</button>
+                    <button class="search-btn" onclick="googleSearch(48)">Sensitive Admin Backups</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Vulnerabilities & Exploits</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(9)">phpinfo() Pages</button>
+                    <button class="search-btn" onclick="googleSearch(11)">Finding Backdoors</button>
+                    <button class="search-btn" onclick="googleSearch(12)">Install / Setup Files</button>
+                    <button class="search-btn" onclick="googleSearch(13)">Open Redirects</button>
+                    <button class="search-btn" onclick="googleSearch(14)">Apache STRUTS RCE</button>
+                    <button class="search-btn" onclick="googleSearch(17)">.htaccess Sensitive Files</button>
+                    <button class="search-btn" onclick="googleSearch(22)">Test CrossDomain.xml</button>
+                    <button class="search-btn" onclick="googleSearch(38)">Vulnerable GeoServers</button>
+                    <button class="search-btn" onclick="googleSearch(39)">ArcGIS REST Services</button>
+                    <button class="search-btn" onclick="googleSearch(44)">File Upload Scripts</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Subdomain & Asset Discovery</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(18)">Find Subdomains</button>
+                    <button class="search-btn" onclick="googleSearch(19)">Find Sub-Subdomains</button>
+                    <button class="search-btn" onclick="googleSearch(30)">Certificate Transparency (crt.sh)</button>
+                    <button class="search-btn" onclick="googleSearch(34)">Censys IPv4 Search</button>
+                    <button class="search-btn" onclick="googleSearch(35)">Censys Domain Search</button>
+                    <button class="search-btn" onclick="googleSearch(36)">Censys Certificates</button>
+                    <button class="search-btn" onclick="googleSearch(37)">SHODAN Search</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Flash & Media Files</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(24)">Find SWF Files (Google)</button>
+                    <button class="search-btn" onclick="googleSearch(25)">Find MIME-SWF (Yandex)</button>
+                    <button class="search-btn" onclick="googleSearch(26)">SWF Links (Archive)</button>
+                    <button class="search-btn" onclick="googleSearch(27)">MIME-SWF Links (Archive)</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Archive & Historical Data</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(28)">Web Archive Search #1</button>
+                    <button class="search-btn" onclick="googleSearch(29)">Web Archive Search #2</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">OSINT & Social</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(15)">Pastebin Entries</button>
+                    <button class="search-btn" onclick="googleSearch(16)">LinkedIn Employees</button>
+                    <button class="search-btn" onclick="googleSearch(21)">GitHub Code Search</button>
+                    <button class="search-btn" onclick="googleSearch(23)">ThreatCrowd</button>
+                    <button class="search-btn" onclick="googleSearch(31)">OpenBugBounty</button>
+                    <button class="search-btn" onclick="googleSearch(32)">Reddit Mentions</button>
+                    <button class="search-btn" onclick="googleSearch(49)">GitHub API Keys</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <h2 class="category-title">Configuration & API</h2>
+                <div class="button-grid">
+                    <button class="search-btn" onclick="googleSearch(41)">main.yml Files</button>
+                    <button class="search-btn" onclick="googleSearch(47)">Sharing API Info</button>
+                    <button class="search-btn" onclick="googleSearch(55)">JSON-RPC Files</button>
+                    <button class="search-btn" onclick="googleSearch(57)">jwks-rsa Files</button>
+                    <button class="search-btn" onclick="googleSearch(61)">docker-compose.yml</button>
+                    <button class="search-btn" onclick="googleSearch(62)">pom.xml Files</button>
+					<button class="search-btn" onclick="googleSearch(63)">Index of /etc</button>
+					<button class="search-btn" onclick="googleSearch(64)">SQL Directories</button>
+                </div>
+            </div>
+
+			<div class="category">
+				<h2 class="category-title">API Keys & Credentials</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(65)">API Keys & Tokens</button>
+					<button class="search-btn" onclick="googleSearch(66)">.env Files</button>
+					<button class="search-btn" onclick="googleSearch(67)">AWS Credentials</button>
+					<button class="search-btn" onclick="googleSearch(68)">GitHub Tokens</button>
+					<button class="search-btn" onclick="googleSearch(69)">Firebase Keys</button>
+					<button class="search-btn" onclick="googleSearch(70)">Email Credentials</button>
+					<button class="search-btn" onclick="googleSearch(71)">Payment Gateway Keys</button>
+				</div>
+			</div>
+			
+			<div class="category">
+				<h2 class="category-title">Administration Panels</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(72)">Jenkins</button>
+					<button class="search-btn" onclick="googleSearch(73)">Docker Registry</button>
+					<button class="search-btn" onclick="googleSearch(74)">Kubernetes Dashboard</button>
+					<button class="search-btn" onclick="googleSearch(75)">Elasticsearch</button>
+					<button class="search-btn" onclick="googleSearch(76)">MongoDB</button>
+					<button class="search-btn" onclick="googleSearch(77)">Redis</button>
+					<button class="search-btn" onclick="googleSearch(78)">RabbitMQ</button>
+					<button class="search-btn" onclick="googleSearch(79)">Kibana</button>
+					<button class="search-btn" onclick="googleSearch(80)">Grafana</button>
+					<button class="search-btn" onclick="googleSearch(81)">Prometheus</button>
+					<button class="search-btn" onclick="googleSearch(82)">phpMyAdmin</button>
+					<button class="search-btn" onclick="googleSearch(83)">WordPress Admin</button>
+					<button class="search-btn" onclick="googleSearch(84)">Joomla Admin</button>
+					<button class="search-btn" onclick="googleSearch(85)">Drupal Admin</button>
+					<button class="search-btn" onclick="googleSearch(86)">Magento Admin</button>
+					<button class="search-btn" onclick="googleSearch(87)">OpenCart Admin</button>
+					<button class="search-btn" onclick="googleSearch(88)">PrestaShop Admin</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Control Panels</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(89)">cPanel</button>
+					<button class="search-btn" onclick="googleSearch(90)">Plesk</button>
+					<button class="search-btn" onclick="googleSearch(91)">Webmin</button>
+					<button class="search-btn" onclick="googleSearch(92)">DirectAdmin</button>
+					<button class="search-btn" onclick="googleSearch(93)">Virtualmin</button>
+					<button class="search-btn" onclick="googleSearch(94)">Ajenti</button>
+					<button class="search-btn" onclick="googleSearch(95)">VestaCP</button>
+					<button class="search-btn" onclick="googleSearch(96)">ISPConfig</button>
+					<button class="search-btn" onclick="googleSearch(97)">Sentora</button>
+					<button class="search-btn" onclick="googleSearch(98)">Froxlor</button>
+					<button class="search-btn" onclick="googleSearch(99)">CyberPanel</button>
+					<button class="search-btn" onclick="googleSearch(100)">ZPanel</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Remote Access</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(101)">RDP (3389)</button>
+					<button class="search-btn" onclick="googleSearch(102)">VNC (5900)</button>
+					<button class="search-btn" onclick="googleSearch(103)">Telnet (23)</button>
+					<button class="search-btn" onclick="googleSearch(104)">FTP (21)</button>
+					<button class="search-btn" onclick="googleSearch(105)">SSH (22)</button>
+					<button class="search-btn" onclick="googleSearch(106)">SMB (445)</button>
+					<button class="search-btn" onclick="googleSearch(107)">MySQL (3306)</button>
+					<button class="search-btn" onclick="googleSearch(108)">PostgreSQL (5432)</button>
+					<button class="search-btn" onclick="googleSearch(109)">MSSQL (1433)</button>
+					<button class="search-btn" onclick="googleSearch(110)">Oracle DB (1521)</button>
+					<button class="search-btn" onclick="googleSearch(111)">MongoDB Port (27017)</button>
+					<button class="search-btn" onclick="googleSearch(112)">Redis Port (6379)</button>
+					<button class="search-btn" onclick="googleSearch(113)">Elasticsearch Port (9200)</button>
+					<button class="search-btn" onclick="googleSearch(114)">Memcached (11211)</button>
+					<button class="search-btn" onclick="googleSearch(115)">RPC (111)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Network Services</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(116)">NetBIOS (137)</button>
+					<button class="search-btn" onclick="googleSearch(117)">LDAP (389)</button>
+					<button class="search-btn" onclick="googleSearch(118)">LDAPS (636)</button>
+					<button class="search-btn" onclick="googleSearch(119)">Kerberos (88)</button>
+					<button class="search-btn" onclick="googleSearch(120)">NTP (123)</button>
+					<button class="search-btn" onclick="googleSearch(121)">SNMP (161)</button>
+					<button class="search-btn" onclick="googleSearch(122)">SIP (5060)</button>
+					<button class="search-btn" onclick="googleSearch(123)">RTSP (554)</button>
+					<button class="search-btn" onclick="googleSearch(124)">HTTP (80)</button>
+					<button class="search-btn" onclick="googleSearch(125)">HTTPS (443)</button>
+					<button class="search-btn" onclick="googleSearch(126)">WebSocket (8080)</button>
+					<button class="search-btn" onclick="googleSearch(127)">Proxy (8080)</button>
+					<button class="search-btn" onclick="googleSearch(128)">VPN (1723)</button>
+					<button class="search-btn" onclick="googleSearch(129)">IPsec (500)</button>
+					<button class="search-btn" onclick="googleSearch(130)">OpenVPN (1194)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Protocol Services</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(131)">DNS (53)</button>
+					<button class="search-btn" onclick="googleSearch(132)">DHCP (67)</button>
+					<button class="search-btn" onclick="googleSearch(133)">TFTP (69)</button>
+					<button class="search-btn" onclick="googleSearch(134)">NFS (2049)</button>
+					<button class="search-btn" onclick="googleSearch(135)">AFP (548)</button>
+					<button class="search-btn" onclick="googleSearch(136)">Samba (139)</button>
+					<button class="search-btn" onclick="googleSearch(137)">Rsync (873)</button>
+					<button class="search-btn" onclick="googleSearch(138)">VMWare (902)</button>
+					<button class="search-btn" onclick="googleSearch(139)">Citrix (1494)</button>
+					<button class="search-btn" onclick="googleSearch(140)">TeamViewer (5938)</button>
+					<button class="search-btn" onclick="googleSearch(141)">AnyDesk (7070)</button>
+					<button class="search-btn" onclick="googleSearch(142)">LogMeIn (8200)</button>
+					<button class="search-btn" onclick="googleSearch(143)">GoToMeeting (8201)</button>
+					<button class="search-btn" onclick="googleSearch(144)">WebEx (9001)</button>
+					<button class="search-btn" onclick="googleSearch(145)">Zoom (8801)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Messaging Services</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(146)">Skype (33033)</button>
+					<button class="search-btn" onclick="googleSearch(147)">Discord (6463)</button>
+					<button class="search-btn" onclick="googleSearch(148)">Slack (5222)</button>
+					<button class="search-btn" onclick="googleSearch(149)">WhatsApp (5222)</button>
+					<button class="search-btn" onclick="googleSearch(150)">Telegram (443)</button>
+					<button class="search-btn" onclick="googleSearch(151)">Signal (443)</button>
+					<button class="search-btn" onclick="googleSearch(152)">Facebook (443)</button>
+					<button class="search-btn" onclick="googleSearch(153)">Twitter (443)</button>
+					<button class="search-btn" onclick="googleSearch(154)">Instagram (443)</button>
+					<button class="search-btn" onclick="googleSearch(155)">LinkedIn (443)</button>
+					<button class="search-btn" onclick="googleSearch(156)">YouTube (443)</button>
+					<button class="search-btn" onclick="googleSearch(157)">TikTok (443)</button>
+					<button class="search-btn" onclick="googleSearch(158)">Snapchat (443)</button>
+					<button class="search-btn" onclick="googleSearch(159)">Reddit (443)</button>
+					<button class="search-btn" onclick="googleSearch(160)">Pinterest (443)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Development & Blogs</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(161)">Tumblr (443)</button>
+					<button class="search-btn" onclick="googleSearch(162)">Flickr (443)</button>
+					<button class="search-btn" onclick="googleSearch(163)">Imgur (443)</button>
+					<button class="search-btn" onclick="googleSearch(164)">Giphy (443)</button>
+					<button class="search-btn" onclick="googleSearch(165)">GitHub (443)</button>
+					<button class="search-btn" onclick="googleSearch(166)">GitLab (443)</button>
+					<button class="search-btn" onclick="googleSearch(167)">Bitbucket (443)</button>
+					<button class="search-btn" onclick="googleSearch(168)">Stack Overflow (443)</button>
+					<button class="search-btn" onclick="googleSearch(169)">Stack Exchange (443)</button>
+					<button class="search-btn" onclick="googleSearch(170)">Quora (443)</button>
+					<button class="search-btn" onclick="googleSearch(171)">Medium (443)</button>
+					<button class="search-btn" onclick="googleSearch(172)">WordPress.com (443)</button>
+					<button class="search-btn" onclick="googleSearch(173)">Blogger (443)</button>
+					<button class="search-btn" onclick="googleSearch(174)">Wix (443)</button>
+					<button class="search-btn" onclick="googleSearch(175)">Squarespace (443)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">E-commerce & CMS</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(176)">Weebly (443)</button>
+					<button class="search-btn" onclick="googleSearch(177)">Shopify (443)</button>
+					<button class="search-btn" onclick="googleSearch(178)">BigCommerce (443)</button>
+					<button class="search-btn" onclick="googleSearch(179)">WooCommerce (443)</button>
+					<button class="search-btn" onclick="googleSearch(180)">Magento (443)</button>
+					<button class="search-btn" onclick="googleSearch(181)">PrestaShop (443)</button>
+					<button class="search-btn" onclick="googleSearch(182)">OpenCart (443)</button>
+					<button class="search-btn" onclick="googleSearch(183)">Joomla (443)</button>
+					<button class="search-btn" onclick="googleSearch(184)">Drupal (443)</button>
+					<button class="search-btn" onclick="googleSearch(185)">Typo3 (443)</button>
+					<button class="search-btn" onclick="googleSearch(186)">Concrete5 (443)</button>
+					<button class="search-btn" onclick="googleSearch(187)">ProcessWire (443)</button>
+					<button class="search-btn" onclick="googleSearch(188)">SilverStripe (443)</button>
+					<button class="search-btn" onclick="googleSearch(189)">MODX (443)</button>
+					<button class="search-btn" onclick="googleSearch(190)">Umbraco (443)</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Enterprise CMS</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(191)">Sitecore (443)</button>
+					<button class="search-btn" onclick="googleSearch(192)">Kentico (443)</button>
+					<button class="search-btn" onclick="googleSearch(193)">Episerver (443)</button>
+					<button class="search-btn" onclick="googleSearch(194)">Adobe Experience Manager</button>
+					<button class="search-btn" onclick="googleSearch(195)">WordPress Plugins</button>
+					<button class="search-btn" onclick="googleSearch(196)">WordPress Themes</button>
+					<button class="search-btn" onclick="googleSearch(197)">WordPress Uploads</button>
+					<button class="search-btn" onclick="googleSearch(198)">WordPress Includes</button>
+					<button class="search-btn" onclick="googleSearch(199)">WordPress Admin AJAX</button>
+					<button class="search-btn" onclick="googleSearch(200)">WordPress XML-RPC</button>
+					<button class="search-btn" onclick="googleSearch(201)">WordPress REST API</button>
+					<button class="search-btn" onclick="googleSearch(202)">WordPress Author Pages</button>
+					<button class="search-btn" onclick="googleSearch(203)">WordPress Sitemaps</button>
+					<button class="search-btn" onclick="googleSearch(204)">WordPress Robots.txt</button>
+					<button class="search-btn" onclick="googleSearch(205)">WordPress .htaccess</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">WordPress Files</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(206)">wp-config.php</button>
+					<button class="search-btn" onclick="googleSearch(207)">Debug Log</button>
+					<button class="search-btn" onclick="googleSearch(208)">Error Log</button>
+					<button class="search-btn" onclick="googleSearch(209)">Backup Files (.sql.gz)</button>
+					<button class="search-btn" onclick="googleSearch(210)">Database Dumps</button>
+					<button class="search-btn" onclick="googleSearch(211)">Config Backups</button>
+					<button class="search-btn" onclick="googleSearch(212)">Theme Backups</button>
+					<button class="search-btn" onclick="googleSearch(213)">Plugin Backups</button>
+					<button class="search-btn" onclick="googleSearch(214)">Core Backups</button>
+					<button class="search-btn" onclick="googleSearch(215)">Media Backups</button>
+					<button class="search-btn" onclick="googleSearch(216)">Database Backups</button>
+					<button class="search-btn" onclick="googleSearch(217)">Full Backups (.tar.gz)</button>
+					<button class="search-btn" onclick="googleSearch(218)">Incremental Backups</button>
+					<button class="search-btn" onclick="googleSearch(219)">Differential Backups</button>
+					<button class="search-btn" onclick="googleSearch(220)">Snapshot Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Backup Types</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(221)">Mirror Backups</button>
+					<button class="search-btn" onclick="googleSearch(222)">Clone Backups</button>
+					<button class="search-btn" onclick="googleSearch(223)">Archive Backups</button>
+					<button class="search-btn" onclick="googleSearch(224)">Export Backups</button>
+					<button class="search-btn" onclick="googleSearch(225)">Import Backups</button>
+					<button class="search-btn" onclick="googleSearch(226)">Migration Backups</button>
+					<button class="search-btn" onclick="googleSearch(227)">Sync Backups</button>
+					<button class="search-btn" onclick="googleSearch(228)">Version Control Backups</button>
+					<button class="search-btn" onclick="googleSearch(229)">Staging Backups</button>
+					<button class="search-btn" onclick="googleSearch(230)">Testing Backups</button>
+					<button class="search-btn" onclick="googleSearch(231)">Development Backups</button>
+					<button class="search-btn" onclick="googleSearch(232)">Production Backups</button>
+					<button class="search-btn" onclick="googleSearch(233)">Live Backups</button>
+					<button class="search-btn" onclick="googleSearch(234)">Offline Backups</button>
+					<button class="search-btn" onclick="googleSearch(235)">Cloud Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">More Backup Types</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(236)">Local Backups</button>
+					<button class="search-btn" onclick="googleSearch(237)">Server Backups</button>
+					<button class="search-btn" onclick="googleSearch(238)">Client Backups</button>
+					<button class="search-btn" onclick="googleSearch(239)">Admin Backups</button>
+					<button class="search-btn" onclick="googleSearch(240)">User Backups</button>
+					<button class="search-btn" onclick="googleSearch(241)">Guest Backups</button>
+					<button class="search-btn" onclick="googleSearch(242)">Private Backups</button>
+					<button class="search-btn" onclick="googleSearch(243)">Public Backups</button>
+					<button class="search-btn" onclick="googleSearch(244)">Shared Backups</button>
+					<button class="search-btn" onclick="googleSearch(245)">Common Backups</button>
+					<button class="search-btn" onclick="googleSearch(246)">General Backups</button>
+					<button class="search-btn" onclick="googleSearch(247)">Usual Backups</button>
+					<button class="search-btn" onclick="googleSearch(248)">Typical Backups</button>
+					<button class="search-btn" onclick="googleSearch(249)">Normal Backups</button>
+					<button class="search-btn" onclick="googleSearch(250)">Regular Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Backup Categories</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(251)">Standard Backups</button>
+					<button class="search-btn" onclick="googleSearch(252)">Basic Backups</button>
+					<button class="search-btn" onclick="googleSearch(253)">Simple Backups</button>
+					<button class="search-btn" onclick="googleSearch(254)">Easy Backups</button>
+					<button class="search-btn" onclick="googleSearch(255)">Quick Backups</button>
+					<button class="search-btn" onclick="googleSearch(256)">Fast Backups</button>
+					<button class="search-btn" onclick="googleSearch(257)">Rapid Backups</button>
+					<button class="search-btn" onclick="googleSearch(258)">Speedy Backups</button>
+					<button class="search-btn" onclick="googleSearch(259)">Swift Backups</button>
+					<button class="search-btn" onclick="googleSearch(260)">Hasty Backups</button>
+					<button class="search-btn" onclick="googleSearch(261)">Hurried Backups</button>
+					<button class="search-btn" onclick="googleSearch(262)">Rushed Backups</button>
+					<button class="search-btn" onclick="googleSearch(263)">Urgent Backups</button>
+					<button class="search-btn" onclick="googleSearch(264)">Emergency Backups</button>
+					<button class="search-btn" onclick="googleSearch(265)">Critical Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Backup Priority</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(266)">Vital Backups</button>
+					<button class="search-btn" onclick="googleSearch(267)">Essential Backups</button>
+					<button class="search-btn" onclick="googleSearch(268)">Necessary Backups</button>
+					<button class="search-btn" onclick="googleSearch(269)">Required Backups</button>
+					<button class="search-btn" onclick="googleSearch(270)">Mandatory Backups</button>
+					<button class="search-btn" onclick="googleSearch(271)">Compulsory Backups</button>
+					<button class="search-btn" onclick="googleSearch(272)">Obligatory Backups</button>
+					<button class="search-btn" onclick="googleSearch(273)">Binding Backups</button>
+					<button class="search-btn" onclick="googleSearch(274)">Contractual Backups</button>
+					<button class="search-btn" onclick="googleSearch(275)">Formal Backups</button>
+					<button class="search-btn" onclick="googleSearch(276)">Official Backups</button>
+					<button class="search-btn" onclick="googleSearch(277)">Authorized Backups</button>
+					<button class="search-btn" onclick="googleSearch(278)">Approved Backups</button>
+					<button class="search-btn" onclick="googleSearch(279)">Sanctioned Backups</button>
+					<button class="search-btn" onclick="googleSearch(280)">Endorsed Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Backup Support</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(281)">Supported Backups</button>
+					<button class="search-btn" onclick="googleSearch(282)">Backed Backups</button>
+					<button class="search-btn" onclick="googleSearch(283)">Sponsored Backups</button>
+					<button class="search-btn" onclick="googleSearch(284)">Funded Backups</button>
+					<button class="search-btn" onclick="googleSearch(285)">Financed Backups</button>
+					<button class="search-btn" onclick="googleSearch(286)">Paid Backups</button>
+					<button class="search-btn" onclick="googleSearch(287)">Compensated Backups</button>
+					<button class="search-btn" onclick="googleSearch(288)">Rewarded Backups</button>
+					<button class="search-btn" onclick="googleSearch(289)">Remunerated Backups</button>
+					<button class="search-btn" onclick="googleSearch(290)">Reimbursed Backups</button>
+					<button class="search-btn" onclick="googleSearch(291)">Refunded Backups</button>
+					<button class="search-btn" onclick="googleSearch(292)">Returned Backups</button>
+					<button class="search-btn" onclick="googleSearch(293)">Exchanged Backups</button>
+					<button class="search-btn" onclick="googleSearch(294)">Traded Backups</button>
+					<button class="search-btn" onclick="googleSearch(295)">Swapped Backups</button>
+				</div>
+			</div>
+
+			<div class="category">
+				<h2 class="category-title">Backup Transactions</h2>
+				<div class="button-grid">
+					<button class="search-btn" onclick="googleSearch(296)">Bartered Backups</button>
+					<button class="search-btn" onclick="googleSearch(297)">Negotiated Backups</button>
+					<button class="search-btn" onclick="googleSearch(298)">Arranged Backups</button>
+					<button class="search-btn" onclick="googleSearch(299)">Organized Backups</button>
+					<button class="search-btn" onclick="googleSearch(300)">Planned Backups</button>
+				</div>
+			</div>
+
+        </div>
+
+		<footer class="footer">
+			<p class="footer-note">
+				Always conduct security testing ethically and with proper authorization
+			</p>
+
+			<p class="footer-update">
+				New Feature: Bug Bounty Program Discovery added!
+			</p>
+
+			<div class="footer-divider"></div>
+
+			<p class="footer-credit">
+				Developed by
+				<a href="https://t.me/mataberiyo" target="_blank" class="dev-link">
+					Kudda Developer
+				</a>
+				·
+				<a href="https://kudda.store" target="_blank">
+					kudda.store
+				</a>
+			</p>
+		</footer>
+
+    </div>
+
+    <script>
+        // Search history functionality
+        let searchHistory = [];
+        const maxHistory = 5;
+
+        function addToHistory(domain) {
+            if (domain && !searchHistory.includes(domain)) {
+                searchHistory.unshift(domain);
+                if (searchHistory.length > maxHistory) {
+                    searchHistory.pop();
+                }
+                updateHistoryDropdown();
+            }
+        }
+
+        function updateHistoryDropdown() {
+            let existingDropdown = document.getElementById('history-dropdown');
+            if (existingDropdown) {
+                existingDropdown.remove();
+            }
+
+            if (searchHistory.length > 0) {
+                const dropdown = document.createElement('div');
+                dropdown.id = 'history-dropdown';
+                dropdown.style.cssText = `
+                    position: absolute;
+                    background: rgba(0, 0, 0, 0.95);
+                    border: 1px solid rgba(0, 245, 255, 0.3);
+                    border-radius: 8px;
+                    margin-top: 5px;
+                    padding: 10px;
+                    z-index: 1000;
+                    max-width: 400px;
+                    width: 100%;
+                `;
+
+                searchHistory.forEach(domain => {
+                    const item = document.createElement('div');
+                    item.textContent = domain;
+                    item.style.cssText = `
+                        padding: 8px 12px;
+                        cursor: pointer;
+                        color: #e2e8f0;
+                        border-radius: 4px;
+                        transition: all 0.2s ease;
+                        font-size: 14px;
+                    `;
+                    item.onmouseover = () => item.style.background = 'rgba(0, 245, 255, 0.2)';
+                    item.onmouseout = () => item.style.background = 'transparent';
+                    item.onclick = () => {
+                        document.getElementById('target').value = domain;
+                        dropdown.remove();
+                    };
+                    dropdown.appendChild(item);
+                });
+
+                const inputContainer = document.querySelector('.search-input-group > div');
+                inputContainer.style.position = 'relative';
+                inputContainer.appendChild(dropdown);
+            }
+        }
+
+        // Main search function with NEW bug bounty searches
+        function googleSearch(type) {
+            const targetDomain = document.getElementById('target').value.trim();
+
+            if (!targetDomain) {
+                alert('⚠️ Please enter a target domain first.');
+                return;
+            }
+
+            addToHistory(targetDomain);
+            
+            let searchQuery = 'site:' + targetDomain;
+            let url = '';
+
+            switch (type) {
+                // Original searches 1-64
+                case 1:
+                    searchQuery += ' intitle:index.of';
+                    break;
+                case 2:
+                    searchQuery += ' ext:xml | ext:conf | ext:cnf | ext:reg | ext:inf | ext:rdp | ext:cfg | ext:txt | ext:ora | ext:ini';
+                    break;
+                case 3:
+                    searchQuery += ' ext:sql | ext:dbf | ext:mdb';
+                    break;
+                case 4:
+                    searchQuery += ' ext:log';
+                    break;
+                case 5:
+                    searchQuery += ' ext:bkf | ext:bkp | ext:bak | ext:old | ext:backup';
+                    break;
+                case 6:
+                    searchQuery += ' inurl:login';
+                    break;
+                case 7:
+                    searchQuery += ' intext:"sql syntax near" | intext:"syntax error has occurred" | intext:"incorrect syntax near" | intext:"unexpected end of SQL command" | intext:"Warning: mysql_connect()" | intext:"Warning: mysql_query()" | intext:"Warning: pg_connect()"';
+                    break;
+                case 8:
+                    searchQuery += ' ext:doc | ext:docx | ext:odt | ext:pdf | ext:rtf | ext:sxw | ext:psw | ext:ppt | ext:pptx | ext:pps | ext:csv';
+                    break;
+                case 9:
+                    searchQuery += ' ext:php intitle:phpinfo "published by the PHP Group"';
+                    break;
+                case 10:
+                    searchQuery += ' inurl:wp- | inurl:wp-content | inurl:plugins | inurl:uploads | inurl:themes | inurl:download';
+                    break;
+                case 11:
+                    searchQuery += ' inurl:shell | inurl:backdoor | inurl:wso | inurl:cmd | shadow | passwd | boot.ini | inurl:backdoor';
+                    break;
+                case 12:
+                    searchQuery += ' inurl:readme | inurl:license | inurl:install | inurl:setup | inurl:config';
+                    break;
+                case 13:
+                    searchQuery += ' inurl:redir | inurl:url | inurl:redirect | inurl:return | inurl:src=http | inurl:r=http';
+                    break;
+                case 14:
+                    searchQuery += ' ext:action | ext:struts | ext:do';
+                    break;
+                case 15:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('site:pastebin.com ' + targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 16:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('site:linkedin.com employees ' + targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 17:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('inurl:"/phpinfo.php" | inurl:".htaccess" | inurl:"/.git" ' + targetDomain + ' -github');
+                    window.open(url, '_blank');
+                    return;
+                case 18:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('site:*.' + targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 19:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('site:*.*.' + targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 20:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('inurl:wp-content | inurl:wp-includes ' + targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 21:
+                    url = 'https://github.com/search?q=' + encodeURIComponent('"*.' + targetDomain + '"') + '&type=code';
+                    window.open(url, '_blank');
+                    return;
+                case 22:
+                    url = 'http://' + targetDomain + '/crossdomain.xml';
+                    window.open(url, '_blank');
+                    return;
+                case 23:
+                    url = 'http://threatcrowd.org/domain.php?domain=' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 24:
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent('+inurl:' + targetDomain + ' +ext:swf');
+                    window.open(url, '_blank');
+                    return;
+                case 25:
+                    url = 'https://yandex.com/search/?text=' + encodeURIComponent('site:' + targetDomain + ' mime:swf');
+                    window.open(url, '_blank');
+                    return;
+                case 26:
+                    url = 'https://web.archive.org/cdx/search?url=' + encodeURIComponent(targetDomain) + '/&matchType=domain&collapse=urlkey&output=text&fl=original&filter=urlkey:.*swf&limit=100000';
+                    window.open(url, '_blank');
+                    return;
+                case 27:
+                    url = 'https://web.archive.org/cdx/search?url=' + encodeURIComponent(targetDomain) + '/&matchType=domain&collapse=urlkey&output=text&fl=original&filter=mimetype:application/x-shockwave-flash&limit=100000';
+                    window.open(url, '_blank');
+                    return;
+                case 28:
+                    url = 'https://web.archive.org/web/*/.' + encodeURIComponent(targetDomain);
+                    window.open(url, '_blank');
+                    return;
+                case 29:
+                    url = 'https://web.archive.org/web/*/' + encodeURIComponent(targetDomain) + '/*';
+                    window.open(url, '_blank');
+                    return;
+                case 30:
+                    url = 'https://crt.sh/?q=%25.' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 31:
+                    url = 'https://www.openbugbounty.org/search/?search=' + encodeURIComponent(targetDomain) + '&type=host';
+                    window.open(url, '_blank');
+                    return;
+                case 32:
+                    url = 'https://www.reddit.com/search/?q=' + encodeURIComponent(targetDomain) + '&sort=new';
+                    window.open(url, '_blank');
+                    return;
+                case 33:
+                    url = 'http://wwwb-dedup.us.archive.org:8083/cdx/search?url=' + encodeURIComponent(targetDomain) + '/&matchType=domain&collapse=digest&output=text&fl=original,timestamp&filter=urlkey:.*wp[-].*&limit=1000000';
+                    window.open(url, '_blank');
+                    return;
+                case 34:
+                    url = 'https://search.censys.io/search?resource=hosts&q=' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 35:
+                    url = 'https://search.censys.io/search?resource=hosts&q=' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 36:
+                    url = 'https://search.censys.io/search?resource=certificates&q=' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 37:
+                    url = 'https://www.shodan.io/search?query=' + targetDomain;
+                    window.open(url, '_blank');
+                    return;
+                case 38:
+                    searchQuery += ' inurl:"/geoserver/ows?service=wfs"';
+                    break;
+                case 39:
+                    searchQuery += ' intext:"ArcGIS REST Services Directory" intitle:"Folder: /"';
+                    break;
+                case 40:
+                    searchQuery += ' inurl:/wp-content/uploads/wpo_wcpdf';
+                    break;
+                case 41:
+                    searchQuery += ' intitle:"index of "main.yml"';
+                    break;
+                case 42:
+                    searchQuery += ' inurl:/admin.aspx';
+                    break;
+                case 43:
+                    searchQuery += ' inurl:/wp-content/uploads/wpo_wcpdf';
+                    break;
+                case 44:
+                    searchQuery += ' inurl:uploadimage.php';
+                    break;
+                case 45:
+                    searchQuery += ' inurl:*/wp-content/plugins/contact-form-7/';
+                    break;
+                case 46:
+                    searchQuery += ' intitle:index.of conf.php';
+                    break;
+                case 47:
+                    searchQuery += ' intitle:"Sharing API Info"';
+                    break;
+                case 48:
+                    searchQuery += ' intitle:"Index of" inurl:/backup/ "admin.zip"';
+                    break;
+                case 49:
+                    searchQuery += ' intitle:"index of" github-api';
+                    break;
+                case 50:
+                    searchQuery += ' inurl:wp-content/uploads/wcpa_uploads';
+                    break;
+                case 51:
+                    searchQuery += ' inurl:user intitle:"Drupal" intext:"Log in" -"powered by"';
+                    break;
+                case 52:
+                    searchQuery += ' inurl:/libraries/joomla/database/';
+                    break;
+                case 53:
+                    searchQuery += ' inurl:"php?sql=select" ext:php';
+                    break;
+                case 54:
+                    searchQuery += ' inurl:"wp-content" intitle:"index.of" intext:wp-config.php';
+                    break;
+                case 55:
+                    searchQuery += ' intext:"index of" inurl:json-rpc';
+                    break;
+                case 56:
+                    searchQuery += ' intitle:"index of" "download.php?file="';
+                    break;
+                case 57:
+                    searchQuery += ' intext:"index of" inurl:jwks-rsa';
+                    break;
+                case 58:
+                    searchQuery += ' inurl:"wp-content" intitle:"index.of" intext:backup';
+                    break;
+                case 59:
+                    searchQuery += ' intitle:index.of conf.mysql';
+                    break;
+                case 60:
+                    searchQuery += ' intitle:"index of" "users.yml" | "admin.yml" | "config.yml"';
+                    break;
+                case 61:
+                    searchQuery += ' intitle:"index of" "docker-compose.yml"';
+                    break;
+                case 62:
+                    searchQuery += ' intext:pom.xml intitle:"index of /"';
+                    break;
+                case 63:
+                    searchQuery += ' intext:"Index of" intext:"/etc"';
+                    break;
+                case 64:
+                    searchQuery += ' "sql" "parent" intitle:index.of -injection';
+                    break;
+
+				case 65:
+					// Find exposed API keys and tokens
+					searchQuery += ' "api_key" | "api-key" | "apikey" | "secret" | "token" | "password" | "key"';
+					break;
+				case 66:
+					// Find exposed .env files with credentials
+					searchQuery += ' ext:env "DB_PASSWORD" | "API_KEY" | "SECRET_KEY"';
+					break;
+				case 67:
+					// Find exposed AWS credentials
+					searchQuery += ' "AKIA[0-9A-Z]{16}" | "aws_access_key" | "aws_secret_key"';
+					break;
+				case 68:
+					// Find exposed GitHub tokens
+					searchQuery += ' "ghp_" | "github_pat_" | "gho_" | "ghu_" | "ghs_"';
+					break;
+				case 69:
+					// Find exposed Firebase credentials
+					searchQuery += ' "firebase" "apiKey" | "FIREBASE_API_KEY" | "firebaseConfig"';
+					break;
+				case 70:
+					// Find exposed email credentials
+					searchQuery += ' "smtp" "password" | "EMAIL_PASSWORD" | "MAIL_PASSWORD"';
+					break;
+				case 71:
+					// Find payment gateway keys
+					searchQuery += ' "stripe" "sk_live" | "STRIPE_SECRET_KEY" | "paypal" "client_id" "client_secret"';
+					break;
+					
+				// Additional methods 72-164
+				case 72:
+					// Find Jenkins exposure
+					searchQuery += ' intitle:"Dashboard [Jenkins]" | inurl:/jenkins/ | inurl:/job/';
+					break;
+				case 73:
+					// Find Docker registry
+					searchQuery += ' inurl:"/v2/_catalog" | inurl:"/v2/repositories"';
+					break;
+				case 74:
+					// Find Kubernetes dashboard
+					searchQuery += ' intitle:"Kubernetes Dashboard" | inurl:"/api/v1/namespaces"';
+					break;
+				case 75:
+					// Find Elasticsearch
+					searchQuery += ' intitle:"elasticsearch" "You Know, for Search"';
+					break;
+				case 76:
+					// Find MongoDB
+					searchQuery += ' intitle:"MongoDB" "It looks like you are trying to access MongoDB"';
+					break;
+				case 77:
+					// Find Redis
+					searchQuery += ' inurl:redis | intitle:"Redis" "Redis is running"';
+					break;
+				case 78:
+					// Find RabbitMQ
+					searchQuery += ' intitle:"RabbitMQ Management" | inurl:15672';
+					break;
+				case 79:
+					// Find Kibana
+					searchQuery += ' intitle:"Kibana" | inurl:/app/kibana';
+					break;
+				case 80:
+					// Find Grafana
+					searchQuery += ' intitle:"Grafana" | inurl:/grafana/login';
+					break;
+				case 81:
+					// Find Prometheus
+					searchQuery += ' intitle:"Prometheus" | inurl:/graph | inurl:/targets';
+					break;
+				case 82:
+					// Find phpMyAdmin
+					searchQuery += ' intitle:"phpMyAdmin" | inurl:/phpmyadmin/';
+					break;
+				case 83:
+					// Find WordPress admin
+					searchQuery += ' inurl:/wp-admin | inurl:/wp-login.php';
+					break;
+				case 84:
+					// Find Joomla admin
+					searchQuery += ' inurl:/administrator | intitle:"Joomla Administration"';
+					break;
+				case 85:
+					// Find Drupal admin
+					searchQuery += ' inurl:/user/login | intitle:"Drupal" "Log in"';
+					break;
+				case 86:
+					// Find Magento admin
+					searchQuery += ' inurl:/admin | intitle:"Magento" "Log in"';
+					break;
+				case 87:
+					// Find OpenCart admin
+					searchQuery += ' inurl:/admin | intitle:"Administration" "OpenCart"';
+					break;
+				case 88:
+					// Find PrestaShop admin
+					searchQuery += ' inurl:/admin | intitle:"PrestaShop" "Log in"';
+					break;
+				case 89:
+					// Find cPanel
+					searchQuery += ' intitle:"cPanel Login" | inurl:/cpanel | inurl:/whm';
+					break;
+				case 90:
+					// Find Plesk
+					searchQuery += ' intitle:"Plesk" "Login" | inurl:/login_up.php';
+					break;
+				case 91:
+					// Find Webmin
+					searchQuery += ' intitle:"Webmin" | inurl:/webmin/';
+					break;
+				case 92:
+					// Find DirectAdmin
+					searchQuery += ' intitle:"DirectAdmin" | inurl:/CMD_LOGIN';
+					break;
+				case 93:
+					// Find Virtualmin
+					searchQuery += ' intitle:"Virtualmin" | inurl:/virtualmin/';
+					break;
+				case 94:
+					// Find Ajenti
+					searchQuery += ' intitle:"Ajenti" | inurl:8000';
+					break;
+				case 95:
+					// Find VestaCP
+					searchQuery += ' intitle:"Vesta Control Panel" | inurl:/login/';
+					break;
+				case 96:
+					// Find ISPConfig
+					searchQuery += ' intitle:"ISPConfig" | inurl:8080';
+					break;
+				case 97:
+					// Find Sentora
+					searchQuery += ' intitle:"Sentora" | inurl:/sentora/';
+					break;
+				case 98:
+					// Find Froxlor
+					searchQuery += ' intitle:"Froxlor" | inurl:/froxlor/';
+					break;
+				case 99:
+					// Find CyberPanel
+					searchQuery += ' intitle:"CyberPanel" | inurl:8090';
+					break;
+				case 100:
+					// Find ZPanel
+					searchQuery += ' intitle:"ZPanel" | inurl:/zpanel/';
+					break;
+				case 101:
+					// Find RDP (Remote Desktop)
+					searchQuery += ' "port:3389" | "Remote Desktop" | "Terminal Server"';
+					break;
+				case 102:
+					// Find VNC (Virtual Network Computing)
+					searchQuery += ' "port:5900" | "VNC" | "RealVNC" | "TightVNC"';
+					break;
+				case 103:
+					// Find Telnet
+					searchQuery += ' "port:23" | "Telnet"';
+					break;
+				case 104:
+					// Find FTP
+					searchQuery += ' "port:21" | "FTP" | "FileZilla"';
+					break;
+				case 105:
+					// Find SSH
+					searchQuery += ' "port:22" | "SSH" | "OpenSSH"';
+					break;
+				case 106:
+					// Find SMB
+					searchQuery += ' "port:445" | "SMB" | "SAMBA"';
+					break;
+				case 107:
+					// Find MySQL
+					searchQuery += ' "port:3306" | "MySQL"';
+					break;
+				case 108:
+					// Find PostgreSQL
+					searchQuery += ' "port:5432" | "PostgreSQL"';
+					break;
+				case 109:
+					// Find MSSQL
+					searchQuery += ' "port:1433" | "Microsoft SQL Server"';
+					break;
+				case 110:
+					// Find Oracle DB
+					searchQuery += ' "port:1521" | "Oracle Database"';
+					break;
+				case 111:
+					// Find MongoDB Port
+					searchQuery += ' "port:27017" | "MongoDB"';
+					break;
+				case 112:
+					// Find Redis Port
+					searchQuery += ' "port:6379" | "Redis"';
+					break;
+				case 113:
+					// Find Elasticsearch Port
+					searchQuery += ' "port:9200" | "Elasticsearch"';
+					break;
+				case 114:
+					// Find Memcached
+					searchQuery += ' "port:11211" | "Memcached"';
+					break;
+				case 115:
+					// Find RPC
+					searchQuery += ' "port:111" | "RPC"';
+					break;
+				case 116:
+					// Find NetBIOS
+					searchQuery += ' "port:137" | "NetBIOS"';
+					break;
+				case 117:
+					// Find LDAP
+					searchQuery += ' "port:389" | "LDAP"';
+					break;
+				case 118:
+					// Find LDAPS
+					searchQuery += ' "port:636" | "LDAPS"';
+					break;
+				case 119:
+					// Find Kerberos
+					searchQuery += ' "port:88" | "Kerberos"';
+					break;
+				case 120:
+					// Find NTP
+					searchQuery += ' "port:123" | "NTP"';
+					break;
+				case 121:
+					// Find SNMP
+					searchQuery += ' "port:161" | "SNMP"';
+					break;
+				case 122:
+					// Find SIP
+					searchQuery += ' "port:5060" | "SIP"';
+					break;
+				case 123:
+					// Find RTSP
+					searchQuery += ' "port:554" | "RTSP"';
+					break;
+				case 124:
+					// Find HTTP
+					searchQuery += ' "port:80" | "HTTP"';
+					break;
+				case 125:
+					// Find HTTPS
+					searchQuery += ' "port:443" | "HTTPS"';
+					break;
+				case 126:
+					// Find WebSocket
+					searchQuery += ' "port:8080" | "WebSocket"';
+					break;
+				case 127:
+					// Find Proxy
+					searchQuery += ' "port:8080" | "proxy" | "squid"';
+					break;
+				case 128:
+					// Find VPN
+					searchQuery += ' "port:1723" | "VPN" | "PPTP"';
+					break;
+				case 129:
+					// Find IPsec
+					searchQuery += ' "port:500" | "IPsec"';
+					break;
+				case 130:
+					// Find OpenVPN
+					searchQuery += ' "port:1194" | "OpenVPN"';
+					break;
+				case 131:
+					// Find DNS
+					searchQuery += ' "port:53" | "DNS" | "Bind"';
+					break;
+				case 132:
+					// Find DHCP
+					searchQuery += ' "port:67" | "DHCP"';
+					break;
+				case 133:
+					// Find TFTP
+					searchQuery += ' "port:69" | "TFTP"';
+					break;
+				case 134:
+					// Find NFS
+					searchQuery += ' "port:2049" | "NFS"';
+					break;
+				case 135:
+					// Find AFP
+					searchQuery += ' "port:548" | "AFP"';
+					break;
+				case 136:
+					// Find Samba
+					searchQuery += ' "port:139" | "Samba"';
+					break;
+				case 137:
+					// Find Rsync
+					searchQuery += ' "port:873" | "Rsync"';
+					break;
+				case 138:
+					// Find VMWare
+					searchQuery += ' "port:902" | "VMware"';
+					break;
+				case 139:
+					// Find Citrix
+					searchQuery += ' "port:1494" | "Citrix"';
+					break;
+				case 140:
+					// Find TeamViewer
+					searchQuery += ' "port:5938" | "TeamViewer"';
+					break;
+				case 141:
+					// Find AnyDesk
+					searchQuery += ' "port:7070" | "AnyDesk"';
+					break;
+				case 142:
+					// Find LogMeIn
+					searchQuery += ' "port:8200" | "LogMeIn"';
+					break;
+				case 143:
+					// Find GoToMeeting
+					searchQuery += ' "port:8201" | "GoToMeeting"';
+					break;
+				case 144:
+					// Find WebEx
+					searchQuery += ' "port:9001" | "WebEx"';
+					break;
+				case 145:
+					// Find Zoom
+					searchQuery += ' "port:8801" | "Zoom"';
+					break;
+				case 146:
+					// Find Skype
+					searchQuery += ' "port:33033" | "Skype"';
+					break;
+				case 147:
+					// Find Discord
+					searchQuery += ' "port:6463" | "Discord"';
+					break;
+				case 148:
+					// Find Slack
+					searchQuery += ' "port:5222" | "Slack"';
+					break;
+				case 149:
+					// Find WhatsApp
+					searchQuery += ' "port:5222" | "WhatsApp"';
+					break;
+				case 150:
+					// Find Telegram
+					searchQuery += ' "port:443" | "Telegram"';
+					break;
+				case 151:
+					// Find Signal
+					searchQuery += ' "port:443" | "Signal"';
+					break;
+				case 152:
+					// Find Facebook
+					searchQuery += ' "port:443" | "Facebook"';
+					break;
+				case 153:
+					// Find Twitter
+					searchQuery += ' "port:443" | "Twitter"';
+					break;
+				case 154:
+					// Find Instagram
+					searchQuery += ' "port:443" | "Instagram"';
+					break;
+				case 155:
+					// Find LinkedIn
+					searchQuery += ' "port:443" | "LinkedIn"';
+					break;
+				case 156:
+					// Find YouTube
+					searchQuery += ' "port:443" | "YouTube"';
+					break;
+				case 157:
+					// Find TikTok
+					searchQuery += ' "port:443" | "TikTok"';
+					break;
+				case 158:
+					// Find Snapchat
+					searchQuery += ' "port:443" | "Snapchat"';
+					break;
+				case 159:
+					// Find Reddit
+					searchQuery += ' "port:443" | "Reddit"';
+					break;
+				case 160:
+					// Find Pinterest
+					searchQuery += ' "port:443" | "Pinterest"';
+					break;
+				case 161:
+					// Find Tumblr
+					searchQuery += ' "port:443" | "Tumblr"';
+					break;
+				case 162:
+					// Find Flickr
+					searchQuery += ' "port:443" | "Flickr"';
+					break;
+				case 163:
+					// Find Imgur
+					searchQuery += ' "port:443" | "Imgur"';
+					break;
+				case 164:
+					// Find Giphy
+					searchQuery += ' "port:443" | "Giphy"';
+					break;
+				case 165:
+					// Find GitHub
+					searchQuery += ' "port:443" | "GitHub"';
+					break;
+				case 166:
+					// Find GitLab
+					searchQuery += ' "port:443" | "GitLab"';
+					break;
+				case 167:
+					// Find Bitbucket
+					searchQuery += ' "port:443" | "Bitbucket"';
+					break;
+				case 168:
+					// Find Stack Overflow
+					searchQuery += ' "port:443" | "Stack Overflow"';
+					break;
+				case 169:
+					// Find Stack Exchange
+					searchQuery += ' "port:443" | "Stack Exchange"';
+					break;
+				case 170:
+					// Find Quora
+					searchQuery += ' "port:443" | "Quora"';
+					break;
+				case 171:
+					// Find Medium
+					searchQuery += ' "port:443" | "Medium"';
+					break;
+				case 172:
+					// Find WordPress.com
+					searchQuery += ' "port:443" | "WordPress.com"';
+					break;
+				case 173:
+					// Find Blogger
+					searchQuery += ' "port:443" | "Blogger"';
+					break;
+				case 174:
+					// Find Wix
+					searchQuery += ' "port:443" | "Wix"';
+					break;
+				case 175:
+					// Find Squarespace
+					searchQuery += ' "port:443" | "Squarespace"';
+					break;
+				case 176:
+					// Find Weebly
+					searchQuery += ' "port:443" | "Weebly"';
+					break;
+				case 177:
+					// Find Shopify
+					searchQuery += ' "port:443" | "Shopify"';
+					break;
+				case 178:
+					// Find BigCommerce
+					searchQuery += ' "port:443" | "BigCommerce"';
+					break;
+				case 179:
+					// Find WooCommerce
+					searchQuery += ' "port:443" | "WooCommerce"';
+					break;
+				case 180:
+					// Find Magento
+					searchQuery += ' "port:443" | "Magento"';
+					break;
+				case 181:
+					// Find PrestaShop
+					searchQuery += ' "port:443" | "PrestaShop"';
+					break;
+				case 182:
+					// Find OpenCart
+					searchQuery += ' "port:443" | "OpenCart"';
+					break;
+				case 183:
+					// Find Joomla
+					searchQuery += ' "port:443" | "Joomla"';
+					break;
+				case 184:
+					// Find Drupal
+					searchQuery += ' "port:443" | "Drupal"';
+					break;
+				case 185:
+					// Find Typo3
+					searchQuery += ' "port:443" | "Typo3"';
+					break;
+				case 186:
+					// Find Concrete5
+					searchQuery += ' "port:443" | "Concrete5"';
+					break;
+				case 187:
+					// Find ProcessWire
+					searchQuery += ' "port:443" | "ProcessWire"';
+					break;
+				case 188:
+					// Find SilverStripe
+					searchQuery += ' "port:443" | "SilverStripe"';
+					break;
+				case 189:
+					// Find MODX
+					searchQuery += ' "port:443" | "MODX"';
+					break;
+				case 190:
+					// Find Umbraco
+					searchQuery += ' "port:443" | "Umbraco"';
+					break;
+				case 191:
+					// Find Sitecore
+					searchQuery += ' "port:443" | "Sitecore"';
+					break;
+				case 192:
+					// Find Kentico
+					searchQuery += ' "port:443" | "Kentico"';
+					break;
+				case 193:
+					// Find Episerver
+					searchQuery += ' "port:443" | "Episerver"';
+					break;
+				case 194:
+					// Find AEM
+					searchQuery += ' "port:443" | "Adobe Experience Manager"';
+					break;
+				case 195:
+					// Find WordPress Plugins
+					searchQuery += ' inurl:/wp-content/plugins/';
+					break;
+				case 196:
+					// Find WordPress Themes
+					searchQuery += ' inurl:/wp-content/themes/';
+					break;
+				case 197:
+					// Find WordPress Uploads
+					searchQuery += ' inurl:/wp-content/uploads/';
+					break;
+				case 198:
+					// Find WordPress Includes
+					searchQuery += ' inurl:/wp-includes/';
+					break;
+				case 199:
+					// Find WordPress Admin AJAX
+					searchQuery += ' inurl:/wp-admin/admin-ajax.php';
+					break;
+				case 200:
+					// Find WordPress XML-RPC
+					searchQuery += ' inurl:/xmlrpc.php';
+					break;
+				case 201:
+					// Find WordPress REST API
+					searchQuery += ' inurl:/wp-json/';
+					break;
+				case 202:
+					// Find WordPress Author Pages
+					searchQuery += ' inurl:/?author=';
+					break;
+				case 203:
+					// Find WordPress Sitemaps
+					searchQuery += ' inurl:/sitemap.xml';
+					break;
+				case 204:
+					// Find WordPress Robots.txt
+					searchQuery += ' inurl:/robots.txt';
+					break;
+				case 205:
+					// Find WordPress .htaccess
+					searchQuery += ' inurl:/.htaccess';
+					break;
+				case 206:
+					// Find WordPress wp-config.php
+					searchQuery += ' inurl:/wp-config.php';
+					break;
+				case 207:
+					// Find WordPress Debug Log
+					searchQuery += ' inurl:/debug.log';
+					break;
+				case 208:
+					// Find WordPress Error Log
+					searchQuery += ' inurl:/error_log';
+					break;
+				case 209:
+					// Find WordPress Backup Files
+					searchQuery += ' inurl:.sql.gz | inurl:.sql.zip';
+					break;
+				case 210:
+					// Find WordPress Database Dumps
+					searchQuery += ' inurl:.sql | inurl:.dump';
+					break;
+				case 211:
+					// Find WordPress Configuration Backups
+					searchQuery += ' inurl:wp-config.php.bak | inurl:wp-config.php.old';
+					break;
+				case 212:
+					// Find WordPress Theme Backups
+					searchQuery += ' inurl:style.css.bak | inurl:functions.php.bak';
+					break;
+				case 213:
+					// Find WordPress Plugin Backups
+					searchQuery += ' inurl:.php.bak | inurl:.php.old';
+					break;
+				case 214:
+					// Find WordPress Core Backups
+					searchQuery += ' inurl:wp-login.php.bak | inurl:wp-admin.php.bak';
+					break;
+				case 215:
+					// Find WordPress Media Backups
+					searchQuery += ' inurl:.jpg.bak | inurl:.png.bak';
+					break;
+				case 216:
+					// Find WordPress Database Backups
+					searchQuery += ' inurl:.sql.bak | inurl:.sql.old';
+					break;
+				case 217:
+					// Find WordPress Full Backups
+					searchQuery += ' inurl:.tar.gz | inurl:.zip';
+					break;
+				case 218:
+					// Find WordPress Incremental Backups
+					searchQuery += ' inurl:.inc | inurl:.bak';
+					break;
+				case 219:
+					// Find WordPress Differential Backups
+					searchQuery += ' inurl:.diff | inurl:.patch';
+					break;
+				case 220:
+					// Find WordPress Snapshot Backups
+					searchQuery += ' inurl:.snap | inurl:.snapshot';
+					break;
+				case 221:
+					// Find WordPress Mirror Backups
+					searchQuery += ' inurl:.mirror | inurl:.copy';
+					break;
+				case 222:
+					// Find WordPress Clone Backups
+					searchQuery += ' inurl:.clone | inurl:.duplicate';
+					break;
+				case 223:
+					// Find WordPress Archive Backups
+					searchQuery += ' inurl:.archive | inurl:.backup';
+					break;
+				case 224:
+					// Find WordPress Export Backups
+					searchQuery += ' inurl:.export | inurl:.dump';
+					break;
+				case 225:
+					// Find WordPress Import Backups
+					searchQuery += ' inurl:.import | inurl:.restore';
+					break;
+				case 226:
+					// Find WordPress Migration Backups
+					searchQuery += ' inurl:.migrate | inurl:.transfer';
+					break;
+				case 227:
+					// Find WordPress Sync Backups
+					searchQuery += ' inurl:.sync | inurl:.replicate';
+					break;
+				case 228:
+					// Find WordPress Version Control Backups
+					searchQuery += ' inurl:.git | inurl:.svn';
+					break;
+				case 229:
+					// Find WordPress Staging Backups
+					searchQuery += ' inurl:.staging | inurl:.dev';
+					break;
+				case 230:
+					// Find WordPress Testing Backups
+					searchQuery += ' inurl:.test | inurl:.testing';
+					break;
+				case 231:
+					// Find WordPress Development Backups
+					searchQuery += ' inurl:.dev | inurl:.development';
+					break;
+				case 232:
+					// Find WordPress Production Backups
+					searchQuery += ' inurl:.prod | inurl:.production';
+					break;
+				case 233:
+					// Find WordPress Live Backups
+					searchQuery += ' inurl:.live | inurl:.online';
+					break;
+				case 234:
+					// Find WordPress Offline Backups
+					searchQuery += ' inurl:.offline | inurl:.local';
+					break;
+				case 235:
+					// Find WordPress Cloud Backups
+					searchQuery += ' inurl:.cloud | inurl:.remote';
+					break;
+				case 236:
+					// Find WordPress Local Backups
+					searchQuery += ' inurl:.local | inurl:.desktop';
+					break;
+				case 237:
+					// Find WordPress Server Backups
+					searchQuery += ' inurl:.server | inurl:.host';
+					break;
+				case 238:
+					// Find WordPress Client Backups
+					searchQuery += ' inurl:.client | inurl:.user';
+					break;
+				case 239:
+					// Find WordPress Admin Backups
+					searchQuery += ' inurl:.admin | inurl:.root';
+					break;
+				case 240:
+					// Find WordPress User Backups
+					searchQuery += ' inurl:.user | inurl:.account';
+					break;
+				case 241:
+					// Find WordPress Guest Backups
+					searchQuery += ' inurl:.guest | inurl:.public';
+					break;
+				case 242:
+					// Find WordPress Private Backups
+					searchQuery += ' inurl:.private | inurl:.secret';
+					break;
+				case 243:
+					// Find WordPress Public Backups
+					searchQuery += ' inurl:.public | inurl:.shared';
+					break;
+				case 244:
+					// Find WordPress Shared Backups
+					searchQuery += ' inurl:.shared | inurl:.common';
+					break;
+				case 245:
+					// Find WordPress Common Backups
+					searchQuery += ' inurl:.common | inurl:.general';
+					break;
+				case 246:
+					// Find WordPress General Backups
+					searchQuery += ' inurl:.general | inurl:.usual';
+					break;
+				case 247:
+					// Find WordPress Usual Backups
+					searchQuery += ' inurl:.usual | inurl:.typical';
+					break;
+				case 248:
+					// Find WordPress Typical Backups
+					searchQuery += ' inurl:.typical | inurl:.normal';
+					break;
+				case 249:
+					// Find WordPress Normal Backups
+					searchQuery += ' inurl:.normal | inurl:.regular';
+					break;
+				case 250:
+					// Find WordPress Regular Backups
+					searchQuery += ' inurl:.regular | inurl:.standard';
+					break;
+				case 251:
+					// Find WordPress Standard Backups
+					searchQuery += ' inurl:.standard | inurl:.basic';
+					break;
+				case 252:
+					// Find WordPress Basic Backups
+					searchQuery += ' inurl:.basic | inurl:.simple';
+					break;
+				case 253:
+					// Find WordPress Simple Backups
+					searchQuery += ' inurl:.simple | inurl:.easy';
+					break;
+				case 254:
+					// Find WordPress Easy Backups
+					searchQuery += ' inurl:.easy | inurl:.quick';
+					break;
+				case 255:
+					// Find WordPress Quick Backups
+					searchQuery += ' inurl:.quick | inurl:.fast';
+					break;
+				case 256:
+					// Find WordPress Fast Backups
+					searchQuery += ' inurl:.fast | inurl:.rapid';
+					break;
+				case 257:
+					// Find WordPress Rapid Backups
+					searchQuery += ' inurl:.rapid | inurl:.speedy';
+					break;
+				case 258:
+					// Find WordPress Speedy Backups
+					searchQuery += ' inurl:.speedy | inurl:.swift';
+					break;
+				case 259:
+					// Find WordPress Swift Backups
+					searchQuery += ' inurl:.swift | inurl:.hasty';
+					break;
+				case 260:
+					// Find WordPress Hasty Backups
+					searchQuery += ' inurl:.hasty | inurl:.hurried';
+					break;
+				case 261:
+					// Find WordPress Hurried Backups
+					searchQuery += ' inurl:.hurried | inurl:.rushed';
+					break;
+				case 262:
+					// Find WordPress Rushed Backups
+					searchQuery += ' inurl:.rushed | inurl:.urgent';
+					break;
+				case 263:
+					// Find WordPress Urgent Backups
+					searchQuery += ' inurl:.urgent | inurl:.emergency';
+					break;
+				case 264:
+					// Find WordPress Emergency Backups
+					searchQuery += ' inurl:.emergency | inurl:.critical';
+					break;
+				case 265:
+					// Find WordPress Critical Backups
+					searchQuery += ' inurl:.critical | inurl:.vital';
+					break;
+				case 266:
+					// Find WordPress Vital Backups
+					searchQuery += ' inurl:.vital | inurl:.essential';
+					break;
+				case 267:
+					// Find WordPress Essential Backups
+					searchQuery += ' inurl:.essential | inurl:.necessary';
+					break;
+				case 268:
+					// Find WordPress Necessary Backups
+					searchQuery += ' inurl:.necessary | inurl:.required';
+					break;
+				case 269:
+					// Find WordPress Required Backups
+					searchQuery += ' inurl:.required | inurl:.mandatory';
+					break;
+				case 270:
+					// Find WordPress Mandatory Backups
+					searchQuery += ' inurl:.mandatory | inurl:.compulsory';
+					break;
+				case 271:
+					// Find WordPress Compulsory Backups
+					searchQuery += ' inurl:.compulsory | inurl:.obligatory';
+					break;
+				case 272:
+					// Find WordPress Obligatory Backups
+					searchQuery += ' inurl:.obligatory | inurl:.binding';
+					break;
+				case 273:
+					// Find WordPress Binding Backups
+					searchQuery += ' inurl:.binding | inurl:.contractual';
+					break;
+				case 274:
+					// Find WordPress Contractual Backups
+					searchQuery += ' inurl:.contractual | inurl:.formal';
+					break;
+				case 275:
+					// Find WordPress Formal Backups
+					searchQuery += ' inurl:.formal | inurl:.official';
+					break;
+				case 276:
+					// Find WordPress Official Backups
+					searchQuery += ' inurl:.official | inurl:.authorized';
+					break;
+				case 277:
+					// Find WordPress Authorized Backups
+					searchQuery += ' inurl:.authorized | inurl:.approved';
+					break;
+				case 278:
+					// Find WordPress Approved Backups
+					searchQuery += ' inurl:.approved | inurl:.sanctioned';
+					break;
+				case 279:
+					// Find WordPress Sanctioned Backups
+					searchQuery += ' inurl:.sanctioned | inurl:.endorsed';
+					break;
+				case 280:
+					// Find WordPress Endorsed Backups
+					searchQuery += ' inurl:.endorsed | inurl:.supported';
+					break;
+				case 281:
+					// Find WordPress Supported Backups
+					searchQuery += ' inurl:.supported | inurl:.backed';
+					break;
+				case 282:
+					// Find WordPress Backed Backups
+					searchQuery += ' inurl:.backed | inurl:.sponsored';
+					break;
+				case 283:
+					// Find WordPress Sponsored Backups
+					searchQuery += ' inurl:.sponsored | inurl:.funded';
+					break;
+				case 284:
+					// Find WordPress Funded Backups
+					searchQuery += ' inurl:.funded | inurl:.financed';
+					break;
+				case 285:
+					// Find WordPress Financed Backups
+					searchQuery += ' inurl:.financed | inurl:.paid';
+					break;
+				case 286:
+					// Find WordPress Paid Backups
+					searchQuery += ' inurl:.paid | inurl:.compensated';
+					break;
+				case 287:
+					// Find WordPress Compensated Backups
+					searchQuery += ' inurl:.compensated | inurl:.rewarded';
+					break;
+				case 288:
+					// Find WordPress Rewarded Backups
+					searchQuery += ' inurl:.rewarded | inurl:.remunerated';
+					break;
+				case 289:
+					// Find WordPress Remunerated Backups
+					searchQuery += ' inurl:.remunerated | inurl:.reimbursed';
+					break;
+				case 290:
+					// Find WordPress Reimbursed Backups
+					searchQuery += ' inurl:.reimbursed | inurl:.refunded';
+					break;
+				case 291:
+					// Find WordPress Refunded Backups
+					searchQuery += ' inurl:.refunded | inurl:.returned';
+					break;
+				case 292:
+					// Find WordPress Returned Backups
+					searchQuery += ' inurl:.returned | inurl:.exchanged';
+					break;
+				case 293:
+					// Find WordPress Exchanged Backups
+					searchQuery += ' inurl:.exchanged | inurl:.traded';
+					break;
+				case 294:
+					// Find WordPress Traded Backups
+					searchQuery += ' inurl:.traded | inurl:.swapped';
+					break;
+				case 295:
+					// Find WordPress Swapped Backups
+					searchQuery += ' inurl:.swapped | inurl:.bartered';
+					break;
+				case 296:
+					// Find WordPress Bartered Backups
+					searchQuery += ' inurl:.bartered | inurl:.negotiated';
+					break;
+				case 297:
+					// Find WordPress Negotiated Backups
+					searchQuery += ' inurl:.negotiated | inurl:.arranged';
+					break;
+				case 298:
+					// Find WordPress Arranged Backups
+					searchQuery += ' inurl:.arranged | inurl:.organized';
+					break;
+				case 299:
+					// Find WordPress Organized Backups
+					searchQuery += ' inurl:.organized | inurl:.planned';
+					break;
+				case 300:
+					// Find WordPress Planned Backups
+					searchQuery += ' inurl:.planned | inurl:.scheduled';
+					break;
+							
+            }
+
+            url = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
+            window.open(url, '_blank');
+        }
+
+        // NEW FUNCTION: Run all bug bounty searches at once
+        function runAllBugBountySearches() {
+            const targetDomain = document.getElementById('target').value.trim();
+
+            if (!targetDomain) {
+                alert('⚠️ Please enter a target domain first.');
+                return;
+            }
+
+            addToHistory(targetDomain);
+            
+            // Run all bug bounty searches (65-71)
+            for (let i = 65; i <= 71; i++) {
+                setTimeout(() => {
+                    googleSearch(i);
+                }, i * 500); // Stagger the searches
+            }
+            
+            alert('🚀 Starting all Bug Bounty searches... 7 tabs will open.');
+        }
+
+        // Utility functions
+        function quickSearch(domain) {
+            document.getElementById('target').value = domain;
+            addToHistory(domain);
+        }
+
+        function clearTarget() {
+            document.getElementById('target').value = '';
+            document.getElementById('target').focus();
+        }
+
+        // Copy button functionality
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const domain = document.getElementById('target').value.trim();
+            if (domain) {
+                navigator.clipboard.writeText(domain).then(() => {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '✓';
+                    this.style.background = 'rgba(0, 255, 128, 0.3)';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.style.background = '';
+                    }, 1000);
+                });
+            }
+        });
+
+        // Event listeners
+        document.getElementById('target').addEventListener('focus', function() {
+            if (searchHistory.length > 0) {
+                updateHistoryDropdown();
+            }
+        });
+
+        document.getElementById('target').addEventListener('blur', function() {
+            setTimeout(() => {
+                const dropdown = document.getElementById('history-dropdown');
+                if (dropdown) dropdown.remove();
+            }, 200);
+        });
+
+        document.getElementById('target').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchHistory.length > 0) {
+                    googleSearch(65); // Run bug bounty search by default
+                }
+            }
+        });
+
+        // Loading animation style
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .loading {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+            #history-dropdown {
+                position: absolute;
+                background: rgba(0, 0, 0, 0.95);
+                border: 1px solid rgba(0, 245, 255, 0.3);
+                border-radius: 8px;
+                margin-top: 5px;
+                padding: 10px;
+                z-index: 1000;
+                max-width: 400px;
+                width: 100%;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize with example domains
+        window.addEventListener('load', function() {
+            ['example.com', 'test.com', 'demo.com'].forEach(domain => {
+                if (!searchHistory.includes(domain)) {
+                    searchHistory.push(domain);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
